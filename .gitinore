@@ -1,0 +1,5 @@
+dados_saude.db
+__pycache__/
+.venv/
+venv/
+.env
