@@ -27,33 +27,29 @@ for medicamento in resposta.get("parametros", []):
             "codigo_farmacia": medicamento.get("codigo_cnes")
         })
 
-# 3. Transforma na tabela do Pandas
+#  Transforma na tabela do Pandas
 df = pd.DataFrame(estoque_sp_desordenado)
 
-# 4. O Python cria o arquivo "dados_saude.db" automaticamente na sua pasta!
+# O Python cria o arquivo "dados_saude.db" automaticamente na sua pasta!
 conexao = sqlite3.connect("dados_saude.db")
 
-# 5. Salva os dados lá dentro
+#  Salva os dados lá dentro
 df.to_sql("estoque_desabastecido", conexao, if_exists="replace", index=False)
 
-# 6. Fecha a porta do banco
+# Fecha a porta do banco
 conexao.close()
 
 print("Banco de dados criado e atualizado com sucesso!")
+#. Conta os problemas por farmácia e gera o gráfico interativo
+resumo_farmacias = df.groupby('farmacia').size().reset_index(name='qtd_remedios_alerta')
+grafico = px.bar(
+    resumo_farmacias,
+    x='farmacia',
+    y='qtd_remedios_alerta',
+    title='💊 Farmácias com Medicamentos em Alerta (Estoque < 50)',
+    labels={'farmacia': 'Nome da Farmácia', 'qtd_remedios_alerta': 'Quantidade de Alertas'}
+)
 
+grafico.show()
 
-
-# 4. Conta os problemas por farmácia e gera o gráfico interativo
-#resumo_farmacias = df.groupby('farmacia').size().reset_index(name='qtd_remedios_alerta')
-
-#grafico = px.bar(
-#    resumo_farmacias,
-#    x='farmacia',
-#    y='qtd_remedios_alerta',
-#    title='💊 Farmácias com Medicamentos em Alerta (Estoque < 50)',
-#    labels={'farmacia': 'Nome da Farmácia', 'qtd_remedios_alerta': 'Quantidade de Alertas'}
-#)
-
-#grafico.show()
-
-#grafico.write_html("meu_grafico.html")
+grafico.write_html("meu_grafico.html")
