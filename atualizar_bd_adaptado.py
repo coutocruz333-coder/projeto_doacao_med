@@ -2,16 +2,13 @@ import requests
 import pandas as pd
 import sqlite3
 
-
 # Pega os dados da API
 url = "https://apidadosabertos.saude.gov.br/daf/estoque-medicamentos-bnafar-horus?codigo_uf=35&limit=100&offset=0"
 
 resposta = requests.get(url).json()
 
-
 # Dicionário para agrupar os registros
 estoques_agrupados = {}
-
 
 for medicamento in resposta.get("parametros", []):
 
@@ -27,14 +24,14 @@ for medicamento in resposta.get("parametros", []):
 # Cria uma lista para cada combinação de farmácia(cnes) + produto(catmat) 
         if chave not in estoques_agrupados:
             estoques_agrupados[chave] = []
-
-#Aqui irá armazenar na lista: estoques_agrupados[chave(codigo_farmacia,codigo_produto)] os valores da API
+ 
+# estoques_agrupados[chave(codigo_farmacia,codigo_produto)] os valores da API
         estoques_agrupados[chave].append(medicamento)
 
 estoque_sp_desabastecido = []
 lotes_desabastecidos = []
 estoque_sp_proximo = []
-
+lotes_proximos = []
 for chave, lotes in estoques_agrupados.items():
 
     estoque_total = 0
@@ -64,9 +61,9 @@ for chave, lotes in estoques_agrupados.items():
                 "data_validade": lote.get("data_validade"),
                 "estoque": lote.get("quantidade_estoque")
             })
-
+# próximo do desabastecimento
     elif estoque_total < 50:
-        # próximo do desabastecimento
+        
         primeiro = lotes[0]
         
         estoque_sp_proximo.append({
@@ -77,16 +74,24 @@ for chave, lotes in estoques_agrupados.items():
                     "farmacia": primeiro.get("nome_fantasia"),
                     "codigo_farmacia": primeiro.get("codigo_cnes")
                 })
+        for lote in lotes:
+                lotes_proximos.append({
+                "codigo_produto": lote.get("codigo_catmat"),
+                "codigo_farmacia": lote.get("codigo_cnes"),
+                "numero_lote": lote.get("numero_lote"),
+                "data_validade": lote.get("data_validade"),
+                "estoque": lote.get("quantidade_estoque")
+            })      
 
 
 # 4. Transforma na tabela do Pandas
 df_desabastecido = pd.DataFrame(estoque_sp_desabastecido)
 df_proximo = pd.DataFrame(estoque_sp_proximo)
 df_lotes = pd.DataFrame(lotes_desabastecidos)
+df_lotes_proximo = pd.DataFrame(lotes_proximos)
 
 # 5. Conecta ao banco
 conexao = sqlite3.connect("dados_saude.db")
-
 
 # 6. Salva os dados
 df_desabastecido.to_sql(
@@ -104,7 +109,14 @@ df_proximo.to_sql(
 )
 
 df_lotes.to_sql(
-    "lotes",
+    "lotes_desabastecidos",
+    conexao,
+    if_exists="replace",
+    index=False
+)
+
+df_lotes_proximo.to_sql(
+    "lotes_proximos",
     conexao,
     if_exists="replace",
     index=False
